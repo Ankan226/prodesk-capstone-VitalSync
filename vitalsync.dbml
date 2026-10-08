@@ -1,0 +1,223 @@
+Enum role_enum {
+  admin
+  doctor
+  patient
+}
+
+Enum approval_status {
+  pending
+  approved
+  rejected
+}
+
+Enum appointment_status {
+  booked
+  completed
+  cancelled
+  no_show
+}
+
+Enum record_type {
+  visit
+  diagnosis
+  lab
+  note
+}
+
+Enum prescription_status {
+  active
+  completed
+  cancelled
+}
+
+Enum notification_type {
+  reminder
+  booking
+  cancellation
+  prescription
+  approval
+}
+
+Enum audit_action {
+  READ
+  CREATE
+  UPDATE
+  DELETE
+  APPROVE
+  REJECT
+}
+
+Enum resource_type {
+  user
+  doctor_profile
+  appointment
+  medical_record
+  prescription
+}
+
+Table users {
+  _id objectid [pk]
+  name varchar [not null]
+  email varchar [unique, not null]
+  passwordHash varchar [not null]
+  role role_enum [not null, note: 'Admins are created by seed script, never via Register']
+  isActive boolean [default: true, note: 'Admin can deactivate']
+  termsAcceptedAt timestamp
+  lastLoginAt timestamp
+  createdAt timestamp
+  updatedAt timestamp
+}
+
+Table refresh_tokens {
+  _id objectid [pk]
+  userId objectid [not null]
+  tokenHash varchar [not null, note: 'Hashed; rotated on every refresh']
+  expiresAt timestamp [not null]
+  revokedAt timestamp [note: 'Set on logout']
+  createdAt timestamp
+
+  indexes {
+    userId
+    expiresAt [note: 'TTL index removes expired tokens']
+  }
+}
+
+Table doctor_profiles {
+  _id objectid [pk]
+  userId objectid [unique, not null]
+  specialty varchar [not null]
+  licenseNo varchar [unique, not null]
+  yearsOfExperience int
+  consultationFee int
+  bio text
+  approvalStatus approval_status [default: 'pending', note: 'Pending doctors can log in but are blocked from doctor routes']
+  rejectionReason varchar
+  reviewedBy objectid [note: 'Admin user id']
+  submittedAt timestamp
+  reviewedAt timestamp
+}
+
+Table patient_profiles {
+  _id objectid [pk]
+  userId objectid [unique, not null]
+  dob date
+  gender varchar
+  bloodGroup varchar
+  phone varchar
+  allergies "varchar[]"
+}
+
+Table availabilities {
+  _id objectid [pk]
+  doctorId objectid [not null]
+  dayOfWeek int [note: '0=Sun ... 6=Sat']
+  startTime varchar [note: 'HH:mm']
+  endTime varchar [note: 'HH:mm']
+  slotMinutes int [default: 30, note: '15 | 30 | 45']
+  isActive boolean [default: true, note: 'Toggle per weekday']
+
+  indexes {
+    (doctorId, dayOfWeek)
+  }
+}
+
+Table appointments {
+  _id objectid [pk]
+  doctorId objectid [not null]
+  patientId objectid [not null]
+  date date [not null]
+  slotStart varchar [not null, note: 'HH:mm']
+  slotEnd varchar [not null]
+  status appointment_status [default: 'booked']
+  reason text
+  rescheduledFrom objectid [note: 'Previous appointment, if rescheduled']
+  cancelledBy objectid [note: 'User who cancelled']
+  cancelReason varchar
+  completedAt timestamp
+  createdAt timestamp
+
+  indexes {
+    (doctorId, date, slotStart) [unique, note: 'Prevents double booking. Partial index: only where status = booked']
+    (patientId, date)
+    (doctorId, date)
+  }
+}
+
+Table medical_records {
+  _id objectid [pk]
+  patientId objectid [not null]
+  doctorId objectid [not null]
+  appointmentId objectid
+  type record_type
+  title varchar
+  diagnosis text
+  notes text
+  recordedAt timestamp
+
+  indexes {
+    (patientId, recordedAt)
+  }
+}
+
+Table prescriptions {
+  _id objectid [pk]
+  patientId objectid [not null]
+  doctorId objectid [not null]
+  appointmentId objectid
+  medications json [note: '[{name, dosage, frequency, durationDays}]']
+  instructions text
+  status prescription_status [default: 'active']
+  issuedAt timestamp
+
+  indexes {
+    (patientId, status)
+  }
+}
+
+Table notifications {
+  _id objectid [pk]
+  userId objectid [not null]
+  type notification_type
+  message varchar
+  relatedId objectid [note: 'Appointment, prescription or profile id']
+  isRead boolean [default: false]
+  createdAt timestamp
+
+  indexes {
+    (userId, isRead, createdAt)
+  }
+}
+
+Table audit_logs {
+  _id objectid [pk]
+  actorId objectid [not null]
+  actorRole role_enum
+  action audit_action [not null]
+  resourceType resource_type
+  resourceId objectid
+  ip varchar
+  createdAt timestamp [note: 'Append-only. No update or delete routes exist']
+
+  indexes {
+    (actorId, createdAt)
+    (resourceType, resourceId)
+  }
+}
+
+Ref: refresh_tokens.userId > users._id
+Ref: doctor_profiles.userId - users._id
+Ref: doctor_profiles.reviewedBy > users._id
+Ref: patient_profiles.userId - users._id
+Ref: availabilities.doctorId > doctor_profiles._id
+Ref: appointments.doctorId > doctor_profiles._id
+Ref: appointments.patientId > patient_profiles._id
+Ref: appointments.rescheduledFrom > appointments._id
+Ref: appointments.cancelledBy > users._id
+Ref: medical_records.patientId > patient_profiles._id
+Ref: medical_records.doctorId > doctor_profiles._id
+Ref: medical_records.appointmentId > appointments._id
+Ref: prescriptions.patientId > patient_profiles._id
+Ref: prescriptions.doctorId > doctor_profiles._id
+Ref: prescriptions.appointmentId > appointments._id
+Ref: notifications.userId > users._id
+Ref: audit_logs.actorId > users._id
