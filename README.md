@@ -113,24 +113,6 @@ Figma: PASTE_FIGMA_PUBLIC_LINK
 - **Refresh tokens are stored hashed** and rotated on every refresh; logout sets `revokedAt`.
 - **Audit logs are append-only**, and admin approve / reject decisions are logged.
 
-### Mermaid preview (renders on GitHub)
-
-```mermaid
-erDiagram
-  USERS ||--o{ REFRESH_TOKENS : has
-  USERS ||--o| DOCTOR_PROFILES : has
-  USERS ||--o| PATIENT_PROFILES : has
-  DOCTOR_PROFILES ||--o{ AVAILABILITIES : sets
-  DOCTOR_PROFILES ||--o{ APPOINTMENTS : receives
-  PATIENT_PROFILES ||--o{ APPOINTMENTS : books
-  APPOINTMENTS ||--o{ MEDICAL_RECORDS : produces
-  APPOINTMENTS ||--o{ PRESCRIPTIONS : produces
-  PATIENT_PROFILES ||--o{ MEDICAL_RECORDS : owns
-  PATIENT_PROFILES ||--o{ PRESCRIPTIONS : owns
-  USERS ||--o{ NOTIFICATIONS : receives
-  USERS ||--o{ AUDIT_LOGS : performs
-```
-
 ## 8. Planned API (summary)
 
 | Area | Endpoints |
