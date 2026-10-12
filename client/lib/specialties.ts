@@ -1,0 +1,1 @@
+export const SPECIALTIES = ['Cardiology', 'Dermatology', 'General Medicine', 'Neurology', 'Orthopedics', 'Pediatrics', 'Psychiatry'];
