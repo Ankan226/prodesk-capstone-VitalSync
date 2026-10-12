@@ -17,7 +17,7 @@ Core engineering challenges: **conflict-free appointment booking**, **strict rol
 
 | Item | Link |
 |---|---|
-| Figma wireframes | https://www.figma.com/design/Idzw6s4S0SmEt1weKa3gkM/Untitled?node-id=0-1&p=f&t=qU1og8e1r93k7L2O-0 |
+| Figma wireframes | https://www.figma.com/design/Idzw6s4S0SmEt1weKa3gkM/Untitled?node-id=0-1&t=TWNIfULAHXiR0tie-1 |
 | ERD (dbdiagram.io) | https://dbdiagram.io/d/6ac33f41abcc87fb7aed332d |
 
 ## 3. Tech Stack
