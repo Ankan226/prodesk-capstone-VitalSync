@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 
 const required = ['MONGODB_URI', 'JWT_SECRET'];
 for (const key of required) {
@@ -18,4 +18,5 @@ module.exports = {
     .split(',')
     .map((url) => url.trim())
     .filter(Boolean),
+  stripeSecretKey: process.env.STRIPE_SECRET_KEY || '',
 };
