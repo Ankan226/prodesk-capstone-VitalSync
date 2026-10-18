@@ -8,11 +8,15 @@ const authRoutes = require('./routes/auth.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
 const doctorRoutes = require('./routes/doctor.routes');
 const adminRoutes = require('./routes/admin.routes');
+const doctorsRoutes = require('./routes/doctors.routes');
+const appointmentsRoutes = require('./routes/appointments.routes');
+const availabilityRoutes = require('./routes/availability.routes');
+const paymentsRoutes = require('./routes/payments.routes');
 const { notFound, errorHandler } = require('./middleware/error.middleware');
 
 const app = express();
 
-app.set('trust proxy', 1); 
+app.set('trust proxy', 1);
 app.use(helmet());
 app.use(
   cors({
@@ -39,9 +43,13 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/auth', authLimiter, authRoutes);
-app.use('/api/dashboard', dashboardRoutes); 
+app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/doctor', doctorRoutes); 
 app.use('/api/admin', adminRoutes);
+app.use('/api/doctors', doctorsRoutes); 
+app.use('/api/appointments', appointmentsRoutes);
+app.use('/api/availability', availabilityRoutes);
+app.use('/api/payments', paymentsRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
