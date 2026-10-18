@@ -24,3 +24,41 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+/* Buttons: pointer cursor and hover feedback everywhere */
+button:not(:disabled),
+a.bg-blue-600 {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+button,
+a.bg-blue-600 {
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+button.bg-blue-600:hover:not(:disabled),
+a.bg-blue-600:hover {
+  background-color: #1d4ed8;
+}
+
+button.border:hover:not(:disabled):not(.bg-blue-600) {
+  background-color: #f3f4f6;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+/* Links styled as secondary buttons */
+a.border {
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+a.border:hover {
+  background-color: #f3f4f6;
+}
