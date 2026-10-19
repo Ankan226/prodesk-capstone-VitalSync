@@ -1,63 +1,158 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import DashboardShell from '@/components/DashboardShell';
+import StatCard from '@/components/StatCard';
 import { api } from '@/lib/api';
-import { useAuthStore, type User } from '@/lib/auth-store';
+import { errorMessage, formatDate, formatDateTime, formatRupees, initials, localToday, payableAmount } from '@/lib/helpers';
+import { useAuthStore } from '@/lib/auth-store';
+import type { Appointment } from '@/lib/types';
 
-function DashboardContent() {
-  const router = useRouter();
-  const { user, setAuth, logout } = useAuthStore();
-  const [serverMessage, setServerMessage] = useState('Loading protected data...');
+function OverviewContent() {
+  const user = useAuthStore((s) => s.user);
+  const [items, setItems] = useState<Appointment[] | null>(null);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
 
   useEffect(() => {
-    api<{ user: User }>('/api/auth/me')
-      .then((data) => {
-        const token = useAuthStore.getState().token;
-        if (token) setAuth(token, data.user);
-      })
-      .catch(() => {});
+    api<{ appointments: Appointment[] }>('/api/appointments')
+      .then((d) => setItems(d.appointments))
+      .catch((e) => setError(errorMessage(e)));
+  }, []);
 
 
-    api<{ message: string }>('/api/dashboard')
-      .then((data) => setServerMessage(data.message))
-      .catch(() => setServerMessage('Could not load protected data.'));
-  }, [setAuth]);
 
-  function onLogout() {
-    logout();
-    router.replace('/login');
+  async function onCancel(a: Appointment) {
+    if (!window.confirm(`Cancel your appointment with ${a.doctor.name} on ${formatDateTime(a.date, a.slotStart)}?`)) return;
+    setError('');
+    setNotice('');
+    const previous = items;
+    setItems((cur) => (cur ? cur.filter((x) => x.id !== a.id) : cur));
+    try {
+      await api(`/api/appointments/${a.id}`, { method: 'DELETE' });
+      setNotice('Appointment cancelled');
+    } catch (err) {
+      setItems(previous);
+      setError(errorMessage(err));
+    }
   }
 
+  const today = localToday();
+  const all = items ?? [];
+  const upcoming = all.filter((a) => a.status === 'booked' && a.date >= today);
+  const completed = all.filter((a) => a.status === 'completed').length;
+
+  
+  const notifications = [
+    ...upcoming.slice(0, 3).map((a) => ({
+      id: `r-${a.id}`,
+      title: 'Appointment reminder',
+      text: `${a.doctor.name} · ${formatDateTime(a.date, a.slotStart)}`,
+    })),
+    ...all
+      .filter((a) => a.paymentStatus === 'paid')
+      .slice(-2)
+      .map((a) => ({
+        id: `p-${a.id}`,
+        title: 'Payment received',
+        text: `${a.doctor.name} · ${formatRupees(payableAmount(a.doctor.consultationFee))}`,
+      })),
+  ];
+
+  const firstName = user?.name.split(' ')[0] ?? '';
+
   return (
-    <main className="mx-auto max-w-xl p-6">
-      <h1 className="mb-1 text-2xl font-bold">Patient Dashboard</h1>
-      <p className="mb-4 text-sm text-gray-500">Walking skeleton: you are logged in.</p>
+    <DashboardShell title="Patient Dashboard" subtitle={`Welcome back, ${firstName}. Here's your care at a glance.`}>
+      {notice && <p className="mb-3 rounded bg-green-50 p-2 text-sm text-green-800">{notice}</p>}
+      {error && <p className="mb-3 rounded bg-red-50 p-2 text-sm text-red-700">{error}</p>}
 
-      <div className="mb-4 rounded border border-gray-300 p-4 text-sm">
-        <p><strong>Name:</strong> {user?.name}</p>
-        <p><strong>Email:</strong> {user?.email}</p>
-        <p><strong>Role:</strong> {user?.role}</p>
-        <p><strong>User ID:</strong> {user?.id}</p>
+      <div className="mb-4 grid gap-3 sm:grid-cols-3">
+        <StatCard
+          label="Upcoming"
+          value={items ? upcoming.length : '-'}
+          hint={upcoming[0] ? `Next visit: ${formatDate(upcoming[0].date)}` : 'Nothing booked'}
+        />
+        <StatCard label="Completed" value={items ? completed : '-'} hint="Appointments to date" />
+        <StatCard label="Active Prescriptions" value="-" hint="Available once prescriptions launch" />
       </div>
 
-      <div className="mb-4 rounded border border-gray-300 p-4 text-sm">
-        <strong>From the protected API:</strong> {serverMessage}
+      <div className="mb-4 grid items-start gap-4 lg:grid-cols-3">
+        <section className="rounded border border-gray-200 bg-white p-4 lg:col-span-2">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Upcoming Appointments</h2>
+            <span className="text-xs text-gray-500">{items ? `${upcoming.length} scheduled` : ''}</span>
+          </div>
+
+          {items === null && !error && <p className="text-sm text-gray-500">Loading...</p>}
+          {items && upcoming.length === 0 && (
+            <p className="text-sm text-gray-500">
+              No upcoming appointments. <Link href="/dashboard/book" className="text-blue-600 underline">Find a doctor</Link> to book one.
+            </p>
+          )}
+
+          <ul className="grid gap-3">
+            {upcoming.slice(0, 5).map((a) => (
+              <li key={a.id} className="flex items-center gap-3 rounded border border-gray-200 p-3">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded bg-gray-100 text-sm font-semibold text-gray-600">
+                  {initials(a.doctor.name)}
+                </div>
+                <div className="min-w-0 flex-1 text-sm">
+                  <p className="font-semibold">{a.doctor.name}</p>
+                  <p className="text-gray-500">{a.doctor.specialty}</p>
+                  <p>{formatDateTime(a.date, a.slotStart)}</p>
+                </div>
+                {a.paymentStatus === 'paid' ? (
+                  <span className="rounded bg-green-100 px-2 py-1 text-xs text-green-800">Paid</span>
+                ) : (
+                  <button onClick={() => onCancel(a)} className="rounded border border-gray-400 px-3 py-1 text-sm font-medium">
+                    Cancel
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+
+           <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
+            <span>All appointment times are shown in your local time.</span>
+            <Link href="/dashboard/appointments" className="rounded border border-gray-400 px-3 py-1 text-sm font-medium text-gray-900">
+              Manage all
+            </Link>
+            </div>
+        </section>
+
+        <section className="rounded border border-gray-200 bg-white p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Notifications</h2>
+            <span className="text-xs text-blue-600">
+              {notifications.length > 0 ? `${notifications.length} ${notifications.length === 1 ? 'item' : 'items'}` : ''}
+            </span>
+          </div>
+          {notifications.length === 0 && <p className="text-sm text-gray-500">You are all caught up.</p>}
+          <ul className="grid gap-3">
+            {notifications.map((n) => (
+              <li key={n.id} className="border-b border-gray-100 pb-2 text-sm last:border-b-0">
+                <p className="font-medium">{n.title}</p>
+                <p className="text-gray-500">{n.text}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
       </div>
 
-      <button onClick={onLogout} className="rounded border border-gray-400 px-4 py-2 text-sm">
-        Log out
-      </button>
-    </main>
+      <section className="rounded border border-gray-200 bg-white p-4">
+        <h2 className="mb-2 text-lg font-semibold">Active Prescriptions</h2>
+        <p className="text-sm text-gray-500">No active prescriptions yet. Prescriptions from your doctors will appear here once that feature is added.</p>
+      </section>
+    </DashboardShell>
   );
 }
 
 export default function DashboardPage() {
   return (
-    <ProtectedRoute>
-      roles={['patient']}
-      <DashboardContent />
+    <ProtectedRoute roles={['patient']}>
+      <OverviewContent />
     </ProtectedRoute>
   );
 }
