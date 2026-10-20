@@ -5,10 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
 import FormField from '@/components/FormField';
 import { api, ApiError } from '@/lib/api';
+import { SPECIALTIES } from '@/lib/specialties';
 import { useAuthStore, type Session } from '@/lib/auth-store';
 import { homePathFor } from '@/lib/routes';
-
-const SPECIALTIES = ['Cardiology', 'Dermatology', 'General Medicine', 'Neurology', 'Orthopedics', 'Pediatrics', 'Psychiatry'];
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -40,6 +39,7 @@ export default function RegisterPage() {
     setError('');
 
 
+
     if (password.length < 8) return setError('Password must be at least 8 characters');
     if (password !== confirm) return setError('Passwords do not match');
     if (role === 'doctor' && !specialty) return setError('Choose your specialty');
@@ -58,8 +58,8 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const data = await api<Session>('/api/auth/register', { method: 'POST', body, auth: false });
-      setAuth(data.token, data.user, data.doctorProfile);
-      router.push(homePathFor(data.user, data.doctorProfile));
+      setAuth(data.token, data.user, data.doctorProfile); 
+      router.push(homePathFor(data.user, data.doctorProfile)); 
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Something went wrong');
     } finally {
@@ -107,7 +107,7 @@ export default function RegisterPage() {
             </div>
             <FormField label="Medical license number" name="licenseNo" value={licenseNo} onChange={(e) => setLicenseNo(e.target.value)} required />
             <FormField label="Years of experience" name="years" type="number" min={0} max={70} value={years} onChange={(e) => setYears(e.target.value)} />
-            <FormField label="Consultation fee" name="fee" type="number" min={0} value={fee} onChange={(e) => setFee(e.target.value)} />
+            <FormField label="Consultation fee (₹ per visit)" name="fee" type="number" min={0} value={fee} onChange={(e) => setFee(e.target.value)} />
             <div className="mb-3">
               <label htmlFor="bio" className="mb-1 block text-sm font-medium">Short bio</label>
               <textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} maxLength={500} rows={3} className={inputClass} />
