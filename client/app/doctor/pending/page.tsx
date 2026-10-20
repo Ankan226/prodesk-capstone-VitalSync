@@ -71,7 +71,7 @@ function ReapplyForm({ profile, onDone }: { profile: DoctorProfile; onDone: () =
     try {
       const data = await api<{ doctorProfile: DoctorProfile }>('/api/doctor/application', { method: 'PUT', body });
       const token = useAuthStore.getState().token;
-      if (token && user) setAuth(token, user, data.doctorProfile);
+      if (token && user) setAuth(token, user, data.doctorProfile); 
       onDone();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Something went wrong');
@@ -93,7 +93,7 @@ function ReapplyForm({ profile, onDone }: { profile: DoctorProfile; onDone: () =
       </div>
       <FormField label="Medical license number" name="licenseNo" value={licenseNo} onChange={(e) => setLicenseNo(e.target.value)} required />
       <FormField label="Years of experience" name="years" type="number" min={0} max={70} value={years} onChange={(e) => setYears(e.target.value)} />
-      <FormField label="Consultation fee" name="fee" type="number" min={0} value={fee} onChange={(e) => setFee(e.target.value)} />
+      <FormField label="Consultation fee (₹ per visit)" name="fee" type="number" min={0} value={fee} onChange={(e) => setFee(e.target.value)} />
       <div className="mb-3">
         <label htmlFor="bio" className="mb-1 block text-sm font-medium">Short bio</label>
         <textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} maxLength={500} rows={3} className={inputClass} />
@@ -114,7 +114,6 @@ function PendingContent() {
   const { user, doctorProfile, setAuth } = useAuthStore();
   const [checking, setChecking] = useState(false);
   const [showForm, setShowForm] = useState(false);
-
 
   async function sync() {
     const data = await api<{ user: User; doctorProfile: DoctorProfile | null }>('/api/auth/me');
