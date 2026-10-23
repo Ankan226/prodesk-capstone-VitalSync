@@ -19,4 +19,6 @@ module.exports = {
     .map((url) => url.trim())
     .filter(Boolean),
   stripeSecretKey: process.env.STRIPE_SECRET_KEY || '',
+  geminiApiKey: process.env.GEMINI_API_KEY || '',
+  geminiModel: process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite',
 };
