@@ -6,25 +6,17 @@ const date = z
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use the format YYYY-MM-DD')
   .refine((v) => !Number.isNaN(new Date(`${v}T00:00:00Z`).getTime()), 'Invalid date');
 const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Use the format HH:mm');
+const reason = z.string().trim().min(3, 'Please describe the reason for your visit').max(300);
 
-const createAppointmentSchema = z.object({
-  doctorId: objectId,
-  date,
-  slotStart: time,
-  reason: z.string().trim().min(3, 'Please describe the reason for your visit').max(300),
-});
+const createAppointmentSchema = z.strictObject({ doctorId: objectId, date, slotStart: time, reason });
 
-const updateAppointmentSchema = z.object({
-  date,
-  slotStart: time,
-  reason: z.string().trim().min(3, 'Please describe the reason for your visit').max(300),
-});
+const updateAppointmentSchema = z.strictObject({ date, slotStart: time, reason });
 
-const availabilitySchema = z.object({
+const availabilitySchema = z.strictObject({
   days: z
     .array(
       z
-        .object({
+        .strictObject({
           dayOfWeek: z.number().int().min(0).max(6),
           startTime: time,
           endTime: time,
@@ -40,6 +32,6 @@ const availabilitySchema = z.object({
     .max(7),
 });
 
-const checkoutSchema = z.object({ appointmentId: objectId });
+const checkoutSchema = z.strictObject({ appointmentId: objectId });
 
 module.exports = { createAppointmentSchema, updateAppointmentSchema, availabilitySchema, checkoutSchema };
