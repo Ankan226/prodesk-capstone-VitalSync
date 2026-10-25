@@ -8,6 +8,6 @@ const { checkout, verify } = require('../controllers/payments.controller');
 router.use(protect, requireRole('patient'));
 
 router.post('/checkout', validate(checkoutSchema), checkout);
-router.get('/verify', verify); // ?session_id=cs_test_...
+router.get('/verify', verify); 
 
 module.exports = router;
