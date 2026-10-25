@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const connectDB = require('../config/db');
 const User = require('../models/User');
 const DoctorProfile = require('../models/DoctorProfile');
+const logger = require('../utils/logger');
 
 (async () => {
   await connectDB();
@@ -20,6 +21,6 @@ const DoctorProfile = require('../models/DoctorProfile');
     await User.updateOne({ _id: p.userId }, { doctorStatus: p.approvalStatus });
   }
 
-  console.log(`Updated ${profiles.length} doctor profile(s)`);
+  logger.info(`Updated ${profiles.length} doctor profile(s)`);
   await mongoose.disconnect();
 })();
