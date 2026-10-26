@@ -7,14 +7,14 @@ export interface DoctorSummary {
   consultationFee?: number;
   yearsOfExperience?: number;
   bio?: string;
-  workingDays?: number[]; // 0 = Sunday ... 6 = Saturday
-  nextAvailable?: string | null; // YYYY-MM-DD
+  workingDays?: number[]; 
+  nextAvailable?: string | null; 
 }
 
 export interface Appointment {
   id: string;
-  date: string; // YYYY-MM-DD
-  slotStart: string; // HH:mm
+  date: string; 
+  slotStart: string;
   slotEnd: string;
   status: AppointmentStatus;
   reason?: string;
