@@ -1,9 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardShell from '@/components/DashboardShell';
 import StatCard from '@/components/StatCard';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import { api } from '@/lib/api';
 import { errorMessage, formatDate } from '@/lib/helpers';
 
@@ -21,6 +23,8 @@ function AdminContent() {
   const [doctors, setDoctors] = useState<PendingDoctor[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState('');
+  const [rejecting, setRejecting] = useState<PendingDoctor | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const load = useCallback(
     () =>
@@ -38,18 +42,17 @@ function AdminContent() {
     load();
   }, [load]);
 
-  async function act(id: string, action: 'approve' | 'reject') {
-    let body: { reason: string } | undefined;
-    if (action === 'reject') {
-      const reason = window.prompt('Reason for rejection (at least 5 characters)');
-      if (!reason) return;
-      body = { reason };
-    }
+  async function act(d: PendingDoctor, action: 'approve' | 'reject', reason?: string) {
+    setBusy(true);
     try {
-      await api(`/api/admin/doctors/${id}/${action}`, { method: 'PATCH', body });
+      await api(`/api/admin/doctors/${d.id}/${action}`, { method: 'PATCH', body: reason ? { reason } : undefined });
+      toast.success(action === 'approve' ? `${d.name} approved` : `${d.name} rejected`);
+      setRejecting(null);
       await load();
     } catch (e) {
-      setError(errorMessage(e));
+      toast.error(errorMessage(e));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -62,7 +65,7 @@ function AdminContent() {
       {error && <p className="mb-3 rounded bg-red-50 p-2 text-sm text-red-700">{error}</p>}
 
       <div className="overflow-x-auto rounded border border-gray-200 bg-white">
-        <table className="w-full text-left text-sm">
+        <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="bg-gray-50">
             <tr>
               <th className="p-3">Name</th>
@@ -88,8 +91,8 @@ function AdminContent() {
                 <td className="p-3">{formatDate(d.submittedAt.slice(0, 10))}</td>
                 <td className="p-3">
                   <div className="flex gap-2">
-                    <button onClick={() => act(d.id, 'approve')} className="rounded bg-blue-600 px-3 py-1 text-white">Approve</button>
-                    <button onClick={() => act(d.id, 'reject')} className="rounded border border-gray-400 px-3 py-1">Reject</button>
+                    <button onClick={() => act(d, 'approve')} disabled={busy} className="rounded bg-blue-600 px-3 py-1 text-white disabled:opacity-60">Approve</button>
+                    <button onClick={() => setRejecting(d)} disabled={busy} className="rounded border border-gray-400 px-3 py-1 disabled:opacity-60">Reject</button>
                   </div>
                 </td>
               </tr>
@@ -97,6 +100,19 @@ function AdminContent() {
           </tbody>
         </table>
       </div>
+
+      {rejecting && (
+        <ConfirmDialog
+          title={`Reject ${rejecting.name}?`}
+          message="The doctor will see this reason and can update their details and reapply."
+          confirmLabel="Reject"
+          danger
+          busy={busy}
+          input={{ label: 'Reason for rejection', minLength: 5 }}
+          onConfirm={(reason) => act(rejecting, 'reject', reason)}
+          onClose={() => setRejecting(null)}
+        />
+      )}
     </DashboardShell>
   );
 }
