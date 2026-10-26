@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardShell from '@/components/DashboardShell';
+import AiAssistant from '@/components/AiAssistant';
 import MonthCalendar from '@/components/MonthCalendar';
 import SlotPicker from '@/components/SlotPicker';
 import { api } from '@/lib/api';
@@ -63,6 +64,13 @@ function BookContent() {
     setApplied({ query, specialty: specialtyFilter });
   }
 
+  
+  function applySpecialty(specialty: string) {
+    setQuery('');
+    setSpecialtyFilter(specialty);
+    setApplied({ query: '', specialty });
+  }
+
   function selectDoctor(d: DoctorSummary) {
     setDoctorId(d.id);
     setDate(d.nextAvailable ?? ''); 
@@ -90,7 +98,7 @@ function BookContent() {
       setError(errorMessage(err));
       setSlot('');
       setSlotEnd('');
-      setVersion((v) => v + 1);
+      setVersion((v) => v + 1); 
     } finally {
       setSaving(false);
     }
@@ -98,6 +106,8 @@ function BookContent() {
 
   return (
     <DashboardShell title="Find Doctor and Book Slot" subtitle="Choose a doctor, then select a date and an available time.">
+      <AiAssistant onPickSpecialty={applySpecialty} onUseReason={(text) => setReason(text)} />
+
       <form onSubmit={onSearch} className="mb-4 flex flex-wrap gap-2">
         <input
           value={query}
