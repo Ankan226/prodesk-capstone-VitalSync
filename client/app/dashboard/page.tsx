@@ -2,9 +2,11 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardShell from '@/components/DashboardShell';
 import StatCard from '@/components/StatCard';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import { api } from '@/lib/api';
 import { errorMessage, formatDate, formatDateTime, formatRupees, initials, localToday, payableAmount } from '@/lib/helpers';
 import { useAuthStore } from '@/lib/auth-store';
@@ -14,7 +16,7 @@ function OverviewContent() {
   const user = useAuthStore((s) => s.user);
   const [items, setItems] = useState<Appointment[] | null>(null);
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
+  const [cancelling, setCancelling] = useState<Appointment | null>(null);
 
   useEffect(() => {
     api<{ appointments: Appointment[] }>('/api/appointments')
@@ -22,20 +24,16 @@ function OverviewContent() {
       .catch((e) => setError(errorMessage(e)));
   }, []);
 
-
-
   async function onCancel(a: Appointment) {
-    if (!window.confirm(`Cancel your appointment with ${a.doctor.name} on ${formatDateTime(a.date, a.slotStart)}?`)) return;
-    setError('');
-    setNotice('');
+    setCancelling(null);
     const previous = items;
     setItems((cur) => (cur ? cur.filter((x) => x.id !== a.id) : cur));
     try {
       await api(`/api/appointments/${a.id}`, { method: 'DELETE' });
-      setNotice('Appointment cancelled');
+      toast.success('Appointment cancelled');
     } catch (err) {
       setItems(previous);
-      setError(errorMessage(err));
+      toast.error(errorMessage(err));
     }
   }
 
@@ -44,7 +42,6 @@ function OverviewContent() {
   const upcoming = all.filter((a) => a.status === 'booked' && a.date >= today);
   const completed = all.filter((a) => a.status === 'completed').length;
 
-  
   const notifications = [
     ...upcoming.slice(0, 3).map((a) => ({
       id: `r-${a.id}`,
@@ -65,7 +62,6 @@ function OverviewContent() {
 
   return (
     <DashboardShell title="Patient Dashboard" subtitle={`Welcome back, ${firstName}. Here's your care at a glance.`}>
-      {notice && <p className="mb-3 rounded bg-green-50 p-2 text-sm text-green-800">{notice}</p>}
       {error && <p className="mb-3 rounded bg-red-50 p-2 text-sm text-red-700">{error}</p>}
 
       <div className="mb-4 grid gap-3 sm:grid-cols-3">
@@ -106,7 +102,7 @@ function OverviewContent() {
                 {a.paymentStatus === 'paid' ? (
                   <span className="rounded bg-green-100 px-2 py-1 text-xs text-green-800">Paid</span>
                 ) : (
-                  <button onClick={() => onCancel(a)} className="rounded border border-gray-400 px-3 py-1 text-sm font-medium">
+                  <button onClick={() => setCancelling(a)} className="rounded border border-gray-400 px-3 py-1 text-sm font-medium">
                     Cancel
                   </button>
                 )}
@@ -114,12 +110,12 @@ function OverviewContent() {
             ))}
           </ul>
 
-           <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
             <span>All appointment times are shown in your local time.</span>
             <Link href="/dashboard/appointments" className="rounded border border-gray-400 px-3 py-1 text-sm font-medium text-gray-900">
               Manage all
             </Link>
-            </div>
+          </div>
         </section>
 
         <section className="rounded border border-gray-200 bg-white p-4">
@@ -145,6 +141,17 @@ function OverviewContent() {
         <h2 className="mb-2 text-lg font-semibold">Active Prescriptions</h2>
         <p className="text-sm text-gray-500">No active prescriptions yet. Prescriptions from your doctors will appear here once that feature is added.</p>
       </section>
+
+      {cancelling && (
+        <ConfirmDialog
+          title="Cancel appointment?"
+          message={`Your appointment with ${cancelling.doctor.name} on ${formatDateTime(cancelling.date, cancelling.slotStart)} will be cancelled.`}
+          confirmLabel="Cancel appointment"
+          danger
+          onConfirm={() => onCancel(cancelling)}
+          onClose={() => setCancelling(null)}
+        />
+      )}
     </DashboardShell>
   );
 }
