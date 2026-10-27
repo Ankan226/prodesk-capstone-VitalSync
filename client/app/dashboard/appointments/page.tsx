@@ -2,9 +2,11 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardShell from '@/components/DashboardShell';
 import EditAppointmentModal from '@/components/EditAppointmentModal';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import { api } from '@/lib/api';
 import { errorMessage, formatDateTime, formatRupees, payableAmount } from '@/lib/helpers';
 import type { Appointment, AppointmentStatus } from '@/lib/types';
@@ -21,7 +23,7 @@ const byTime = (a: Appointment, b: Appointment) => (a.date + a.slotStart).locale
 function AppointmentsContent() {
   const [items, setItems] = useState<Appointment[] | null>(null);
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
+  const [deleting, setDeleting] = useState<Appointment | null>(null);
   const [editing, setEditing] = useState<Appointment | null>(null);
   const [payingId, setPayingId] = useState('');
 
@@ -32,39 +34,32 @@ function AppointmentsContent() {
       .catch((e) => setError(errorMessage(e)));
   }, []);
 
-  
   async function onDelete(a: Appointment) {
-    if (!window.confirm(`Delete your appointment with ${a.doctor.name} on ${formatDateTime(a.date, a.slotStart)}?`)) return;
-    setError('');
-    setNotice('');
+    setDeleting(null);
     const previous = items;
     setItems((cur) => (cur ? cur.filter((x) => x.id !== a.id) : cur));
     try {
       await api(`/api/appointments/${a.id}`, { method: 'DELETE' });
-      setNotice('Appointment deleted');
+      toast.success('Appointment deleted');
     } catch (err) {
-      setItems(previous); 
-      setError(errorMessage(err));
+      setItems(previous);
+      toast.error(errorMessage(err));
     }
   }
 
-  
   function onSaved(updated: Appointment) {
     setItems((cur) => (cur ? cur.map((x) => (x.id === updated.id ? updated : x)).sort(byTime) : cur));
     setEditing(null);
-    setError('');
-    setNotice('Appointment updated');
+    toast.success('Appointment updated');
   }
 
-
   async function onPay(a: Appointment) {
-    setError('');
     setPayingId(a.id);
     try {
       const data = await api<{ url: string }>('/api/payments/checkout', { method: 'POST', body: { appointmentId: a.id } });
-      window.location.href = data.url;
+      window.location.assign(data.url);
     } catch (err) {
-      setError(errorMessage(err));
+      toast.error(errorMessage(err));
       setPayingId('');
     }
   }
@@ -79,11 +74,10 @@ function AppointmentsContent() {
         </Link>
       }
     >
-      {notice && <p className="mb-3 rounded bg-green-50 p-2 text-sm text-green-800">{notice}</p>}
       {error && <p className="mb-3 rounded bg-red-50 p-2 text-sm text-red-700">{error}</p>}
 
       <div className="overflow-x-auto rounded border border-gray-200 bg-white">
-        <table className="w-full text-left text-sm">
+        <table className="w-full min-w-[640px] text-left text-sm">
           <thead className="bg-gray-50">
             <tr>
               <th className="p-3">Date and time</th>
@@ -117,7 +111,7 @@ function AppointmentsContent() {
                       </button>
                     )}
                     {a.status !== 'completed' && a.paymentStatus === 'unpaid' && (
-                      <button onClick={() => onDelete(a)} className="rounded border border-red-300 px-3 py-1 text-red-700">Delete</button>
+                      <button onClick={() => setDeleting(a)} className="rounded border border-red-300 px-3 py-1 text-red-700">Delete</button>
                     )}
                   </div>
                 </td>
@@ -128,6 +122,16 @@ function AppointmentsContent() {
       </div>
 
       {editing && <EditAppointmentModal appointment={editing} onClose={() => setEditing(null)} onSaved={onSaved} />}
+      {deleting && (
+        <ConfirmDialog
+          title="Delete appointment?"
+          message={`Your appointment with ${deleting.doctor.name} on ${formatDateTime(deleting.date, deleting.slotStart)} will be deleted.`}
+          confirmLabel="Delete"
+          danger
+          onConfirm={() => onDelete(deleting)}
+          onClose={() => setDeleting(null)}
+        />
+      )}
     </DashboardShell>
   );
 }
