@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const mongoose = require('mongoose');
 const { clientUrls } = require('./config/env');
+const requestLogger = require('./middleware/requestLogger');
 const standardizeErrors = require('./middleware/standardize.middleware');
 const { apiLimiter, authLimiter } = require('./middleware/rateLimiters');
 const authRoutes = require('./routes/auth.routes');
@@ -18,13 +19,15 @@ const { notFound, errorHandler } = require('./middleware/error.middleware');
 
 const app = express();
 
-app.set('trust proxy', 1);
-app.use(standardizeErrors);
+app.set('trust proxy', 1); 
+app.use(requestLogger); 
+app.use(standardizeErrors); 
 app.use(helmet());
+
 app.use(
   cors({
     origin: (origin, cb) => {
-      if (!origin || clientUrls.includes(origin)) return cb(null, true);
+      if (!origin || clientUrls.includes(origin.toLowerCase())) return cb(null, true);
       const err = new Error('Not allowed by CORS');
       err.status = 403;
       cb(err);
@@ -46,7 +49,7 @@ app.use('/api/doctors', doctorsRoutes);
 app.use('/api/appointments', appointmentsRoutes);
 app.use('/api/availability', availabilityRoutes);
 app.use('/api/payments', paymentsRoutes);
-app.use('/api/ai', aiRoutes); 
+app.use('/api/ai', aiRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
